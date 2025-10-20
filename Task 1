@@ -1,0 +1,31 @@
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col, sum, avg, count, year
+
+spark = SparkSession.builder \
+    .appName("BigDataAnalysis_Task1") \
+    .getOrCreate()
+df = spark.read.csv("sales_data.csv", header=True, inferSchema=True)
+print("Schema:")
+df.printSchema()
+print("Sample rows:")
+df.show(5)
+print("Total Rows:", df.count())
+print("Total Columns:", len(df.columns))
+df = df.na.drop()
+print("\n📊 Total Revenue per Product")
+revenue_per_product = df.groupBy("Product").agg(sum("Revenue").alias("TotalRevenue"))
+revenue_per_product.show()
+print("\n📊 Average Revenue per Region")
+avg_revenue_region = df.groupBy("Region").agg(avg("Revenue").alias("AvgRevenue"))
+avg_revenue_region.show()
+print("\n📊 Top 5 Products by Quantity Sold")
+top_products = df.groupBy("Product").agg(sum("Quantity").alias("TotalQuantity")) \
+    .orderBy(col("TotalQuantity").desc())
+top_products.show(5)
+if "Date" in df.columns:
+    sales_per_year = df.withColumn("Year", year(col("Date"))) \
+        .groupBy("Year").agg(count("*").alias("TotalSales"))
+    print("\n📊 Sales per Year")
+    sales_per_year.show()
+revenue_per_product.coalesce(1).write.csv("output/revenue_per_product", header=True)
+spark.stop()
