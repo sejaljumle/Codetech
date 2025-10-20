@@ -1,0 +1,41 @@
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col, avg, sum as _sum, min as _min, max as _max
+import matplotlib.pyplot as plt
+
+spark = SparkSession.builder.appName("Data Analytics Task - Vaishnavi").getOrCreate()
+
+data = spark.read.csv("data.csv", header=True, inferSchema=True)
+
+print("First 5 rows of data:")
+data.show(5)
+
+numeric_columns = [field.name for field in data.schema.fields if str(field.dataType) in ['IntegerType', 'DoubleType', 'LongType', 'FloatType']]
+
+for col_name in numeric_columns:
+    print(f"\nColumn: {col_name}")
+    data.select(
+        _sum(col(col_name)).alias("Sum"),
+        avg(col(col_name)).alias("Average"),
+        _min(col(col_name)).alias("Minimum"),
+        _max(col(col_name)).alias("Maximum")
+    ).show()
+
+if "Name" in data.columns:
+    print("\nTotal Sales and Quantity per Person:")
+    data.groupBy("Name").agg(
+        _sum("Sales").alias("Total_Sales"),
+        _sum("Quantity").alias("Total_Quantity")
+    ).show()
+
+if numeric_columns:
+    first_numeric = numeric_columns[0]
+    pandas_df = data.select(first_numeric).toPandas()
+    
+    plt.figure(figsize=(8,5))
+    plt.bar(pandas_df.index, pandas_df[first_numeric])
+    plt.xlabel("Index")
+    plt.ylabel(first_numeric)
+    plt.title(f"Bar Chart of {first_numeric}")
+    plt.show()
+
+spark.stop()
